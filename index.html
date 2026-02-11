@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>St John CPG Exam Grader</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #004831 0%, #007a53 100%);
+        }
+        .loading-spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #fff;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans">
+
+    <!-- Header -->
+    <header class="gradient-bg text-white py-6 shadow-lg">
+        <div class="container mx-auto px-4 flex flex-col items-center text-center">
+            <h1 class="text-3xl font-bold tracking-tight">Hato Hone St John</h1>
+            <p class="text-green-100 opacity-90 mt-1 uppercase text-xs tracking-widest font-semibold">CPG Clinical Exam Evaluator</p>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8 max-w-4xl">
+        
+        <!-- Setup Section -->
+        <div id="setupSection" class="bg-white rounded-xl shadow-md p-6 mb-6 border border-gray-100">
+            <div class="flex justify-between items-center border-b pb-2 mb-4">
+                <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                    <span class="mr-2 text-green-700">⚙️</span> Configuration & Search Depth
+                </h2>
+                <span class="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded">v2.1 Precision Update</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- API & Model Selection -->
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">API Key</label>
+                        <select id="apiKeySource" onchange="toggleCustomKey()" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 bg-white p-2 border">
+                            <option value="default">Use My Key (sk-8cd0...)</option>
+                            <option value="custom">Use Custom API Key</option>
+                        </select>
+                        <div id="customKeyContainer" class="hidden mt-2 animate-fade-in">
+                            <input type="password" id="customApiKey" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 bg-gray-50 p-2 border text-sm" placeholder="Paste your sk-... key">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Model ID</label>
+                        <select id="modelSelector" onchange="toggleCustomModel()" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 bg-white p-2 border">
+                            <option value="cpg-test">cpg-test (Default)</option>
+                            <option value="qwen3:30b-a3b">qwen3:30b-a3b</option>
+                            <option value="custom">Other Model...</option>
+                        </select>
+                        <div id="customModelContainer" class="hidden mt-2 animate-fade-in">
+                            <input type="text" id="customModelId" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 bg-gray-50 p-2 border text-sm" placeholder="Enter Model ID">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NEW: Search Precision Controls -->
+                <div class="bg-green-50 p-4 rounded-lg border border-green-100">
+                    <label class="block text-xs font-bold text-green-800 uppercase mb-2">Search Retrieval Precision</label>
+                    <input type="range" id="searchPrecision" min="1" max="10" value="7" class="w-full h-2 bg-green-200 rounded-lg appearance-none cursor-pointer accent-green-700">
+                    <div class="flex justify-between text-[10px] text-green-700 mt-1 font-medium">
+                        <span>Fast (Low Context)</span>
+                        <span id="precisionVal">Depth: 7</span>
+                        <span>Precise (High Context)</span>
+                    </div>
+                    
+                    <div class="mt-4 flex items-center">
+                        <input type="checkbox" id="pageRefMode" class="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500" checked>
+                        <label for="pageRefMode" class="ml-2 text-sm text-gray-700 font-medium">Force Page-Level Scanning</label>
+                    </div>
+                    <p class="text-[10px] text-gray-500 mt-2 leading-tight italic">Note: Use High Context if the AI misses specific pages like p.241.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Exam Input -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-6 border border-gray-100">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center border-b pb-2">
+                <span class="mr-2 text-green-700">📝</span> Exam Submission
+            </h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Exam Question</label>
+                    <textarea id="questionInput" rows="2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 bg-gray-50 p-2.5 border" placeholder="Paste the exam question here..."></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Student's Answer</label>
+                    <textarea id="answerInput" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 bg-gray-50 p-2.5 border" placeholder="Enter the response provided by the student..."></textarea>
+                </div>
+                
+                <button onclick="gradeExam()" id="submitBtn" class="w-full gradient-bg text-white font-bold py-3 px-6 rounded-lg transition-all hover:opacity-95 active:scale-[0.98] flex justify-center items-center space-x-2 shadow-md">
+                    <span>Grade Answer</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Result Output -->
+        <div id="resultCard" class="hidden bg-white rounded-xl shadow-md p-6 border border-gray-100 animate-fade-in">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h2 class="text-lg font-semibold text-gray-800">Evaluation Report</h2>
+                <button onclick="clearResult()" class="text-sm text-gray-400 hover:text-red-500 transition-colors">Clear Form</button>
+            </div>
+            <div id="outputArea" class="prose max-w-none text-gray-700 whitespace-pre-line leading-relaxed"></div>
+        </div>
+
+        <div id="statusMessage" class="mt-4 text-center text-sm font-medium hidden"></div>
+    </main>
+
+    <script>
+        const DEFAULT_KEY = "sk-8cd01e8d3a55434a88acd6853b77f717";
+
+        document.getElementById('searchPrecision').addEventListener('input', function(e) {
+            document.getElementById('precisionVal').textContent = `Depth: ${e.target.value}`;
+        });
+
+        function toggleCustomKey() {
+            const container = document.getElementById('customKeyContainer');
+            const source = document.getElementById('apiKeySource').value;
+            container.classList.toggle('hidden', source === 'default');
+        }
+
+        function toggleCustomModel() {
+            const container = document.getElementById('customModelContainer');
+            const selector = document.getElementById('modelSelector').value;
+            container.classList.toggle('hidden', selector !== 'custom');
+        }
+
+        async function gradeExam() {
+            const source = document.getElementById('apiKeySource').value;
+            const apiKey = source === 'default' ? DEFAULT_KEY : document.getElementById('customApiKey').value;
+            const modelSelector = document.getElementById('modelSelector').value;
+            const modelId = modelSelector === 'custom' ? document.getElementById('customModelId').value : modelSelector;
+            
+            const precision = document.getElementById('searchPrecision').value;
+            const forcePage = document.getElementById('pageRefMode').checked;
+
+            const question = document.getElementById('questionInput').value;
+            const answer = document.getElementById('answerInput').value;
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const resultCard = document.getElementById('resultCard');
+            const outputArea = document.getElementById('outputArea');
+
+            if (!apiKey || !modelId || !question || !answer) {
+                showStatus("Error: Missing required fields.", "text-red-600");
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<div class="loading-spinner"></div><span>Deep Scanning CPG...</span>';
+            resultCard.classList.add('hidden');
+            showStatus(`Scanning with depth level ${precision}...`, "text-blue-600");
+
+            // We wrap the prompt to include hint for deep search if info is missing
+            const enhancedQuery = `[SYSTEM HINT: SEARCH_DEPTH=${precision}, FORCE_PAGE_CITATIONS=${forcePage}]
+Please grade the following answer using the CPG guidelines. 
+IMPORTANT: If you cannot find information initially, perform a deep scan of all relevant sections (ensure you check beyond the first few pages of a section).
+
+Question: ${question}
+Student Answer: ${answer}`;
+
+            try {
+                const response = await fetch('http://ask.stjohn.org.nz:3000/api/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: modelId,
+                        messages: [{ role: "user", content: enhancedQuery }],
+                        temperature: 0.0,
+                        // Custom parameters some in-house RAGs respect for top_k/context
+                        extra_body: { 
+                            search_depth: parseInt(precision), 
+                            force_rerank: true 
+                        }
+                    })
+                });
+
+                if (!response.ok) throw new Error(`Server Error (${response.status})`);
+
+                const data = await response.json();
+                const content = data.choices[0].message.content;
+
+                outputArea.innerHTML = formatMarkdown(content);
+                resultCard.classList.remove('hidden');
+                showStatus("Evaluation complete.", "text-green-600");
+
+            } catch (error) {
+                showStatus(`Failed: ${error.message}`, "text-red-600");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span>Grade Answer</span>';
+            }
+        }
+
+        function showStatus(msg, colorClass) {
+            const status = document.getElementById('statusMessage');
+            status.textContent = msg;
+            status.className = `mt-4 text-center text-sm font-medium ${colorClass}`;
+            status.classList.remove('hidden');
+        }
+
+        function clearResult() {
+            document.getElementById('resultCard').classList.add('hidden');
+            document.getElementById('questionInput').value = '';
+            document.getElementById('answerInput').value = '';
+            document.getElementById('statusMessage').classList.add('hidden');
+        }
+
+        function formatMarkdown(text) {
+            return text.replace(/\*\*(.*?)\*\*/g, '<strong class="text-gray-900">$1</strong>')
+                       .replace(/^- /gm, '• ');
+        }
+    </script>
+</body>
+</html>
